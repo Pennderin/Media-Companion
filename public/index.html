@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d1117">
+  <title>Media Companion</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #0d1117; --bg-card: #161b22; --bg-hover: #1c2128; --bg-input: #0d1117;
+      --text: #e6edf3; --text-dim: #7d8590; --text-muted: #484f58;
+      --accent: #58a6ff; --accent-hover: #79c0ff; --accent-glow: rgba(88,166,255,0.15);
+      --success: #3fb950; --warning: #d29922; --danger: #f85149;
+      --border: #30363d; --radius: 12px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100dvh; overflow-x: hidden;
+      padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      padding: 20px 20px 0; display: flex; align-items: center; gap: 12px;
+    }
+    .header-logo {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--accent-glow); display: flex; align-items: center; justify-content: center;
+    }
+    .header-logo svg { width: 20px; height: 20px; color: var(--accent); }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+    /* ===== TABS ===== */
+    .tabs {
+      display: flex; gap: 0; padding: 16px 20px 0; border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text-dim);
+      cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+      user-select: none;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab:active { opacity: 0.7; }
+
+    /* ===== PAGES ===== */
+    .page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .page.active { display: flex; }
+    .page-scroll { flex: 1; overflow-y: auto; padding: 16px 20px 100px; -webkit-overflow-scrolling: touch; }
+
+    /* ===== SEARCH BAR ===== */
+    .search-bar {
+      position: sticky; top: 0; z-index: 10;
+      padding: 16px 20px; background: var(--bg);
+    }
+    .search-input-wrap {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0 14px; transition: border-color 0.15s;
+    }
+    .search-input-wrap:focus-within { border-color: var(--accent); }
+    .search-input-wrap svg { width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0; }
+    .search-input {
+      flex: 1; background: none; border: none; color: var(--text);
+      font-size: 16px; padding: 14px 0; outline: none;
+      font-family: inherit;
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-clear {
+      width: 28px; height: 28px; border-radius: 50%; border: none;
+      background: var(--bg-hover); color: var(--text-dim); cursor: pointer;
+      display: none; align-items: center; justify-content: center; font-size: 14px;
+      flex-shrink: 0;
+    }
+    .search-clear.visible { display: flex; }
+
+    /* Type toggle */
+    .type-toggle {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    .type-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-dim); font-size: 13px;
+      font-weight: 500; cursor: pointer; transition: all 0.15s;
+    }
+    .type-btn.active { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+    .type-btn:active { transform: scale(0.96); }
+
+    /* ===== RESULTS ===== */
+    .results { display: flex; flex-direction: column; gap: 12px; }
+    .result-card {
+      display: flex; gap: 14px; padding: 14px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
+    }
+    .result-card:active { transform: scale(0.98); background: var(--bg-hover); }
+    .result-poster {
+      width: 70px; height: 105px; border-radius: 8px; background: var(--bg-hover);
+      object-fit: cover; flex-shrink: 0;
+    }
+    .result-poster-placeholder {
+      width: 70px; height: 105px; border-radius: 8px; background: var(--bg-hover);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .result-poster-placeholder svg { width: 24px; height: 24px; color: var(--text-muted); }
+    .result-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .result-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .result-year { font-size: 13px; color: var(--text-dim); }
+    .result-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+    .result-rating { font-size: 12px; color: var(--warning); font-weight: 600; }
+    .result-type {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 2px 6px; border-radius: 4px; background: var(--accent-glow); color: var(--accent);
+    }
+    .result-overview { font-size: 12px; color: var(--text-dim); line-height: 1.4; margin-top: 4px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .result-get-btn {
+      position: absolute; right: 14px; bottom: 14px;
+      padding: 8px 20px; border-radius: 20px; border: none;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .result-get-btn:active { transform: scale(0.94); background: var(--accent-hover); }
+    .result-get-btn.loading {
+      background: var(--text-muted); pointer-events: none; width: 76px;
+    }
+    .result-get-btn.success { background: var(--success); }
+    .result-get-btn.error { background: var(--danger); }
+    .result-get-btn.plex-exists { background: rgba(88,166,255,0.15); color: var(--accent); border-color: rgba(88,166,255,0.3); font-size: 11px; }
+
+    /* ===== REQUESTS LIST ===== */
+    .request-card {
+      padding: 14px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); display: flex; flex-direction: column; gap: 6px;
+    }
+    .request-title { font-size: 14px; font-weight: 600; }
+    .request-meta { font-size: 12px; color: var(--text-dim); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .request-torrent { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .request-badge {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .badge-sent { background: rgba(63,185,80,0.15); color: var(--success); }
+    .badge-quality { background: var(--accent-glow); color: var(--accent); }
+    .badge-downloading { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .badge-transferring { background: rgba(210,153,34,0.15); color: var(--warning); }
+    .badge-processing { background: rgba(210,153,34,0.15); color: var(--warning); }
+    .badge-done { background: rgba(63,185,80,0.15); color: var(--success); }
+
+    .request-progress-bar {
+      height: 4px; background: var(--bg-input); border-radius: 2px; overflow: hidden; margin-top: 2px;
+    }
+    .request-progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+    .request-eta {
+      font-size: 11px; color: var(--text-dim); display: flex; justify-content: space-between; margin-top: 2px;
+    }
+    .request-eta .eta-time { color: var(--accent); font-weight: 600; }
+
+    /* ===== TV MODE POPUP ===== */
+    .tv-popup-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: fadeIn 0.15s ease;
+    }
+    .tv-popup {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0; padding: 20px; width: 100%; max-width: 420px;
+      animation: slideUp 0.2s ease;
+    }
+    .tv-popup h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .tv-popup .tv-popup-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
+    .tv-popup-btn {
+      width: 100%; padding: 14px; margin-bottom: 8px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg-input); color: var(--text);
+      font-size: 14px; font-weight: 600; text-align: left; cursor: pointer;
+      display: flex; align-items: center; gap: 10px; font-family: inherit;
+    }
+    .tv-popup-btn:active { background: var(--border); }
+    .tv-popup-btn .tv-btn-icon { font-size: 18px; width: 28px; text-align: center; }
+    .tv-popup-btn .tv-btn-desc { font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
+    .tv-popup-cancel {
+      width: 100%; padding: 12px; margin-top: 4px; border-radius: var(--radius);
+      border: none; background: none; color: var(--text-dim); font-size: 13px;
+      cursor: pointer; font-family: inherit;
+    }
+    .tv-season-input {
+      display: flex; gap: 8px; align-items: center; margin: 12px 0;
+    }
+    .tv-season-input input {
+      width: 60px; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--bg-input); color: var(--text); font-size: 14px; text-align: center;
+      font-family: inherit;
+    }
+    .tv-season-input label { font-size: 13px; color: var(--text-dim); }
+    .tv-go-btn {
+      padding: 10px 20px; border-radius: var(--radius); border: none;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    @keyframes fadeIn { from { opacity: 0; } }
+    @keyframes slideUp { from { transform: translateY(100%); } }
+
+    /* ===== STATES ===== */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; margin-top: 8px; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-state { text-align: center; padding: 40px; }
+    .loading-state .spinner { width: 24px; height: 24px; }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      z-index: 999; animation: toastIn 0.3s ease; max-width: calc(100vw - 40px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .toast-success { background: #1a3a2a; color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+    .toast-error { background: #3a1a1a; color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+    .toast-plex { background: #1a2a3a; color: var(--accent); border: 1px solid rgba(88,166,255,0.3); max-width: 380px; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+    /* ===== SETTINGS ===== */
+    .settings-section { margin-bottom: 24px; }
+    .settings-label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 12px; }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px; background: var(--bg-card); border: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .settings-row:first-of-type { border-radius: var(--radius) var(--radius) 0 0; }
+    .settings-row:last-of-type { border-radius: 0 0 var(--radius) var(--radius); }
+    .settings-row:only-of-type { border-radius: var(--radius); }
+    .settings-row + .settings-row { border-top: none; }
+    .settings-row select, .settings-row input {
+      background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); padding: 8px 12px; font-size: 13px; outline: none;
+      font-family: inherit;
+    }
+    .settings-row select { min-width: 100px; }
+    .settings-row input { width: 80px; text-align: center; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px;
+    }
+    .status-dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.err { background: var(--danger); }
+    .status-dot.unknown { background: var(--text-muted); }
+
+    /* ===== BOTTOM NAV (iOS style) ===== */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(13,17,23,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; align-items: center;
+      padding: 8px 0 calc(8px + var(--safe-bottom));
+      z-index: 50;
+    }
+    .nav-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 6px 16px; border: none; background: none; cursor: pointer;
+      color: var(--text-muted); transition: color 0.15s;
+    }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn span { font-size: 10px; font-weight: 500; }
+    .nav-btn:active { opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  </div>
+  <h1>Media Companion</h1>
+</div>
+
+<!-- TABS (hidden — using bottom nav instead) -->
+
+<!-- PAGES -->
+<div id="page-search" class="page active">
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Movie or TV show name..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="search-clear" id="searchClear">&times;</button>
+    </div>
+    <div class="type-toggle">
+      <button class="type-btn active" data-type="">All</button>
+      <button class="type-btn" data-type="movie">Movies</button>
+      <button class="type-btn" data-type="tv">TV Shows</button>
+    </div>
+  </div>
+  <div class="page-scroll">
+    <div id="searchResults">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <p>Search for a movie or TV show</p>
+        <p style="font-size:12px;margin-top:4px;color:var(--text-muted)">Tap <strong>Get</strong> to add it to your library</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-requests" class="page">
+  <div class="page-scroll">
+    <div style="padding-top:8px">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Recent Requests</h2>
+      <div id="requestsList" class="results">
+        <div class="empty-state"><p>No requests yet</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-settings" class="page">
+  <div class="page-scroll">
+    <div style="padding-top:8px">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Settings</h2>
+
+      <div class="settings-section">
+        <div class="settings-label">Connection Status</div>
+        <div class="settings-row" id="statusRow">
+          <span><span class="status-dot unknown" id="statusDot"></span> <span id="statusText">Checking...</span></span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Preferred Quality</div>
+        <div class="settings-row">
+          <span>Quality</span>
+          <select id="prefQuality">
+            <option value="1080p">1080p</option>
+            <option value="4k">4K</option>
+            <option value="720p">720p</option>
+            <option value="any">Any</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Size Limits</div>
+        <div class="settings-row">
+          <span>Max Movie Size (GB)</span>
+          <input type="number" id="prefMaxSize" min="1" max="100" value="4">
+        </div>
+        <div class="settings-row">
+          <span>Max TV Size (GB)</span>
+          <input type="number" id="prefMaxSizeTV" min="1" max="200" value="60">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Seeders</div>
+        <div class="settings-row">
+          <span>Minimum Seeders</span>
+          <input type="number" id="prefMinSeed" min="0" max="100" value="5">
+        </div>
+      </div>
+
+      <p style="text-align:center;margin-top:24px;font-size:11px;color:var(--text-muted)">
+        Media Companion v1.0<br>
+        Server settings are configured in config.json
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-btn active" data-page="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <span>Search</span>
+  </button>
+  <button class="nav-btn" data-page="requests">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+    <span>Requests</span>
+  </button>
+  <button class="nav-btn" data-page="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Settings</span>
+  </button>
+</div>
+
+<script>
+// ========== STATE ==========
+let currentPage = 'search';
+let searchType = '';
+let searchTimeout = null;
+let pin = localStorage.getItem('mc-pin') || '';
+
+// ========== HELPERS ==========
+function headers() {
+  const h = { 'Content-Type': 'application/json' };
+  if (pin) h['X-Pin'] = pin;
+  return h;
+}
+
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(path, { headers: headers(), ...opts });
+    if (!res.ok) {
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return { error: `Server error ${res.status}: ${text}` }; }
+    }
+    return await res.json();
+  } catch (e) {
+    console.error('[api]', path, e);
+    return { error: e.message || 'Network error' };
+  }
+}
+
+function fmtSize(b) {
+  if (!b) return '—';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(b) / Math.log(1024));
+  return (b / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
+}
+
+function fmtSpeed(b) { return fmtSize(b) + '/s'; }
+
+function timeAgo(ts) {
+  const d = Date.now() - new Date(ts).getTime();
+  if (d < 60000) return 'just now';
+  if (d < 3600000) return Math.floor(d / 60000) + 'm ago';
+  if (d < 86400000) return Math.floor(d / 3600000) + 'h ago';
+  return Math.floor(d / 86400000) + 'd ago';
+}
+
+function showToast(msg, type = 'success') {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ========== NAVIGATION ==========
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const page = btn.dataset.page;
+    currentPage = page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${page}`).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (page === 'requests') startRequestsRefresh();
+    else stopRequestsRefresh();
+    if (page === 'settings') loadSettings();
+  });
+});
+
+// ========== SEARCH ==========
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  searchClear.classList.toggle('visible', q.length > 0);
+  clearTimeout(searchTimeout);
+  if (q.length === 0) {
+    searchResults.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p>Search for a movie or TV show</p>
+      <p style="font-size:12px;margin-top:4px;color:var(--text-muted)">Tap <strong>Get</strong> to add it to your library</p>
+    </div>`;
+    return;
+  }
+  // Short queries get a longer debounce, longer queries fire faster
+  const delay = q.length < 3 ? 600 : 300;
+  searchTimeout = setTimeout(() => doSearch(q), delay);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  searchResults.innerHTML = `<div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <p>Search for a movie or TV show</p>
+  </div>`;
+  searchInput.focus();
+});
+
+// Type toggle
+document.querySelectorAll('.type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    searchType = btn.dataset.type;
+    const q = searchInput.value.trim();
+    if (q.length >= 2) doSearch(q);
+  });
+});
+
+async function doSearch(query) {
+  // Check for IMDB ID
+  const imdbMatch = query.match(/tt\d{7,}/);
+  if (imdbMatch) {
+    searchResults.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+    try {
+      const data = await api(`/api/imdb/${imdbMatch[0]}`);
+      if (data.error) {
+        searchResults.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${escHtml(data.error)}</p></div>`;
+      } else if (data.success && data.result) {
+        renderResults([data.result]);
+      } else {
+        searchResults.innerHTML = '<div class="empty-state"><p>Not found on IMDB</p></div>';
+      }
+    } catch (e) {
+      searchResults.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${escHtml(e.message)}</p></div>`;
+    }
+    return;
+  }
+
+  searchResults.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  try {
+    const typeParam = searchType ? `&type=${searchType}` : '';
+    const data = await api(`/api/search?q=${encodeURIComponent(query)}${typeParam}`);
+    if (data.error) {
+      searchResults.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${escHtml(data.error)}</p></div>`;
+    } else if (data.success && data.results && data.results.length) {
+      renderResults(data.results);
+    } else {
+      searchResults.innerHTML = '<div class="empty-state"><p>No results found</p></div>';
+    }
+  } catch (e) {
+    searchResults.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${escHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderResults(results) {
+  searchResults.innerHTML = '<div class="results">' + results.map((r, i) => `
+    <div class="result-card" data-idx="${i}">
+      ${r.poster
+        ? `<img class="result-poster" src="${r.poster}" alt="" loading="lazy">`
+        : `<div class="result-poster-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>`
+      }
+      <div class="result-info">
+        <div class="result-title">${escHtml(r.title)}</div>
+        <div class="result-meta">
+          ${r.year ? `<span class="result-year">${r.year}</span>` : ''}
+          ${r.rating && r.rating !== '0.0' ? `<span class="result-rating">★ ${r.rating}</span>` : ''}
+          <span class="result-type">${r.type === 'tv' ? 'TV' : 'Movie'}</span>
+        </div>
+        ${r.overview ? `<div class="result-overview">${escHtml(r.overview)}</div>` : ''}
+      </div>
+      <button class="result-get-btn" data-idx="${i}" onclick="event.stopPropagation(); getMedia(${i})">Get</button>
+    </div>
+  `).join('') + '</div>';
+
+  // Store results for the Get action
+  searchResults._results = results;
+}
+
+async function getMedia(idx, skipPlexCheck = false, tvMode = null, tvSeason = null, tvEpisode = null) {
+  const results = searchResults._results;
+  if (!results || !results[idx]) return;
+  const r = results[idx];
+
+  // If it's a TV show and no mode selected yet, show the popup
+  if (r.type === 'tv' && !tvMode) {
+    showTVPopup(idx);
+    return;
+  }
+
+  const btn = document.querySelectorAll('.result-get-btn')[idx];
+  if (!btn || btn.classList.contains('loading')) return;
+  btn.classList.add('loading');
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const body = { title: r.title, year: r.year, type: r.type, tmdbId: r.id, skipPlexCheck };
+    if (tvMode) body.tvMode = tvMode;
+    if (tvSeason) body.tvSeason = parseInt(tvSeason);
+    if (tvEpisode) body.tvEpisode = parseInt(tvEpisode);
+
+    const data = await api('/api/get', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    if (data.error === 'already_in_plex') {
+      btn.classList.remove('loading');
+      btn.classList.add('plex-exists');
+      btn.textContent = 'In Plex';
+      showPlexToast(data.message || `Already in Plex: ${r.title}`, idx);
+      setTimeout(() => {
+        if (btn.classList.contains('plex-exists')) { btn.classList.remove('plex-exists'); btn.textContent = 'Get'; }
+      }, 8000);
+      return;
+    }
+
+    if (data.success) {
+      btn.classList.remove('loading');
+      btn.classList.add('success');
+      btn.textContent = '✓ Sent';
+      const sNum = tvSeason ? String(tvSeason).padStart(2, '0') : '';
+      const eNum = tvEpisode ? String(tvEpisode).padStart(2, '0') : '';
+      const label = tvMode === 'season' ? ` S${sNum}` : tvMode === 'episode' ? ` S${sNum}E${eNum}` : tvMode === 'latest' ? ' (Latest)' : tvMode === 'full' ? ' (Full)' : '';
+      showToast(`${r.title}${label} — downloading!`, 'success');
+      setTimeout(() => { btn.classList.remove('success'); btn.textContent = 'Get'; }, 3000);
+    } else {
+      throw new Error(data.error || 'Failed');
+    }
+  } catch (e) {
+    btn.classList.remove('loading');
+    btn.classList.add('error');
+    btn.textContent = 'Failed';
+    showToast(e.message || 'Failed to get media', 'error');
+    setTimeout(() => { btn.classList.remove('error'); btn.textContent = 'Get'; }, 3000);
+  }
+}
+
+function closeTVPopup() { document.querySelectorAll('.tv-popup-overlay').forEach(p => p.remove()); }
+
+function showTVPopup(idx) {
+  closeTVPopup();
+  const r = searchResults._results[idx];
+  const overlay = document.createElement('div');
+  overlay.className = 'tv-popup-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) closeTVPopup(); };
+
+  overlay.innerHTML = `
+    <div class="tv-popup">
+      <h3>${escHtml(r.title)}</h3>
+      <div class="tv-popup-sub">${r.year || ''} · TV Show</div>
+
+      <button class="tv-popup-btn" onclick="closeTVPopup(); getMedia(${idx}, false, 'full')">
+        <span class="tv-btn-icon">📦</span>
+        <div>Full Show<div class="tv-btn-desc">Find a complete series torrent</div></div>
+      </button>
+
+      <button class="tv-popup-btn" onclick="showSeasonPicker(${idx})">
+        <span class="tv-btn-icon">📁</span>
+        <div>Season<div class="tv-btn-desc">Pick a specific season</div></div>
+      </button>
+
+      <button class="tv-popup-btn" onclick="showEpisodePicker(${idx})">
+        <span class="tv-btn-icon">🎬</span>
+        <div>Episode<div class="tv-btn-desc">Pick a specific episode</div></div>
+      </button>
+
+      <button class="tv-popup-btn" onclick="closeTVPopup(); getMedia(${idx}, false, 'latest')">
+        <span class="tv-btn-icon">⚡</span>
+        <div>Latest<div class="tv-btn-desc">Download episodes not in Plex</div></div>
+      </button>
+
+      <button class="tv-popup-cancel" onclick="closeTVPopup()">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function showSeasonPicker(idx) {
+  const r = searchResults._results[idx];
+  if (!r.id) { showToast('No TMDB ID for this show', 'error'); return; }
+
+  // Replace popup content with loading
+  const popup = document.querySelector('.tv-popup');
+  if (!popup) return;
+  popup.innerHTML = `
+    <h3>${escHtml(r.title)}</h3>
+    <div class="tv-popup-sub">Loading seasons...</div>
+    <div style="display:flex;justify-content:center;padding:20px"><div class="spinner"></div></div>
+  `;
+
+  try {
+    const data = await api(`/api/tv/${r.id}`);
+    if (!data.success || !data.seasons.length) {
+      popup.innerHTML = `
+        <h3>${escHtml(r.title)}</h3>
+        <div class="tv-popup-sub">No seasons found on TMDB</div>
+        <button class="tv-popup-cancel" onclick="closeTVPopup()">Close</button>
+      `;
+      return;
+    }
+
+    const airedSeasons = data.seasons.filter(s => s.aired);
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)}</h3>
+      <div class="tv-popup-sub">${airedSeasons.length} season${airedSeasons.length !== 1 ? 's' : ''} · ${data.status || ''}</div>
+      <div class="tv-season-list" style="max-height:320px;overflow-y:auto;margin:0 -4px">
+        ${airedSeasons.map(s => `
+          <button class="tv-popup-btn" onclick="closeTVPopup(); getMedia(${idx}, false, 'season', ${s.number})" style="margin-bottom:4px">
+            <span class="tv-btn-icon" style="font-size:14px;color:var(--text-dim)">S${String(s.number).padStart(2, '0')}</span>
+            <div>${escHtml(s.name || 'Season ' + s.number)}<div class="tv-btn-desc">${s.episodeCount} episode${s.episodeCount !== 1 ? 's' : ''}${s.airDate ? ' · ' + s.airDate.slice(0, 4) : ''}</div></div>
+          </button>
+        `).join('')}
+      </div>
+      <button class="tv-popup-cancel" onclick="showTVPopup(${idx})">← Back</button>
+    `;
+  } catch (e) {
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)}</h3>
+      <div class="tv-popup-sub" style="color:var(--danger)">Failed to load seasons: ${escHtml(e.message)}</div>
+      <button class="tv-popup-cancel" onclick="closeTVPopup()">Close</button>
+    `;
+  }
+}
+
+async function showEpisodePicker(idx) {
+  const r = searchResults._results[idx];
+  if (!r.id) { showToast('No TMDB ID for this show', 'error'); return; }
+
+  const popup = document.querySelector('.tv-popup');
+  if (!popup) return;
+  popup.innerHTML = `
+    <h3>${escHtml(r.title)}</h3>
+    <div class="tv-popup-sub">Loading seasons...</div>
+    <div style="display:flex;justify-content:center;padding:20px"><div class="spinner"></div></div>
+  `;
+
+  try {
+    const data = await api(`/api/tv/${r.id}`);
+    if (!data.success || !data.seasons.length) {
+      popup.innerHTML = `
+        <h3>${escHtml(r.title)}</h3>
+        <div class="tv-popup-sub">No seasons found on TMDB</div>
+        <button class="tv-popup-cancel" onclick="closeTVPopup()">Close</button>
+      `;
+      return;
+    }
+
+    const airedSeasons = data.seasons.filter(s => s.aired);
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)} — Pick Season</h3>
+      <div class="tv-popup-sub">Then pick an episode</div>
+      <div class="tv-season-list" style="max-height:320px;overflow-y:auto;margin:0 -4px">
+        ${airedSeasons.map(s => `
+          <button class="tv-popup-btn" onclick="showEpisodesForSeason(${idx}, ${s.number})" style="margin-bottom:4px">
+            <span class="tv-btn-icon" style="font-size:14px;color:var(--text-dim)">S${String(s.number).padStart(2, '0')}</span>
+            <div>${escHtml(s.name || 'Season ' + s.number)}<div class="tv-btn-desc">${s.episodeCount} episode${s.episodeCount !== 1 ? 's' : ''}</div></div>
+          </button>
+        `).join('')}
+      </div>
+      <button class="tv-popup-cancel" onclick="showTVPopup(${idx})">← Back</button>
+    `;
+  } catch (e) {
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)}</h3>
+      <div class="tv-popup-sub" style="color:var(--danger)">Failed to load: ${escHtml(e.message)}</div>
+      <button class="tv-popup-cancel" onclick="closeTVPopup()">Close</button>
+    `;
+  }
+}
+
+async function showEpisodesForSeason(idx, seasonNum) {
+  const r = searchResults._results[idx];
+  const popup = document.querySelector('.tv-popup');
+  if (!popup) return;
+
+  popup.innerHTML = `
+    <h3>${escHtml(r.title)} — S${String(seasonNum).padStart(2, '0')}</h3>
+    <div class="tv-popup-sub">Loading episodes...</div>
+    <div style="display:flex;justify-content:center;padding:20px"><div class="spinner"></div></div>
+  `;
+
+  try {
+    const data = await api(`/api/tv/${r.id}/season/${seasonNum}`);
+    if (!data.success || !data.episodes.length) {
+      popup.innerHTML = `
+        <h3>${escHtml(r.title)} — S${String(seasonNum).padStart(2, '0')}</h3>
+        <div class="tv-popup-sub">No episodes found</div>
+        <button class="tv-popup-cancel" onclick="showEpisodePicker(${idx})">← Back</button>
+      `;
+      return;
+    }
+
+    const airedEps = data.episodes.filter(ep => ep.aired);
+    const sNum = String(seasonNum).padStart(2, '0');
+
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)} — Season ${seasonNum}</h3>
+      <div class="tv-popup-sub">${airedEps.length} aired episode${airedEps.length !== 1 ? 's' : ''}</div>
+      <div class="tv-season-list" style="max-height:320px;overflow-y:auto;margin:0 -4px">
+        ${airedEps.map(ep => `
+          <button class="tv-popup-btn" onclick="closeTVPopup(); getMedia(${idx}, false, 'episode', ${seasonNum}, ${ep.number})" style="margin-bottom:4px">
+            <span class="tv-btn-icon" style="font-size:12px;color:var(--text-dim)">E${String(ep.number).padStart(2, '0')}</span>
+            <div>${escHtml(ep.name || 'Episode ' + ep.number)}${ep.overview ? `<div class="tv-btn-desc">${escHtml(ep.overview)}</div>` : ''}</div>
+          </button>
+        `).join('')}
+      </div>
+      <button class="tv-popup-cancel" onclick="showEpisodePicker(${idx})">← Back</button>
+    `;
+  } catch (e) {
+    popup.innerHTML = `
+      <h3>${escHtml(r.title)}</h3>
+      <div class="tv-popup-sub" style="color:var(--danger)">Failed: ${escHtml(e.message)}</div>
+      <button class="tv-popup-cancel" onclick="showEpisodePicker(${idx})">← Back</button>
+    `;
+  }
+}
+
+function showPlexToast(msg, idx) {
+  // Remove existing toasts
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast toast-plex';
+  t.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📺</span>
+      <div style="flex:1">
+        <div style="font-weight:600;margin-bottom:2px">Already in Plex</div>
+        <div style="font-size:11px;opacity:0.8">${escHtml(msg)}</div>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove(); getMedia(${idx}, true)" style="
+        padding:6px 12px; border-radius:6px; border:1px solid rgba(88,166,255,0.4);
+        background:rgba(88,166,255,0.15); color:var(--accent); font-size:11px;
+        font-weight:600; cursor:pointer; white-space:nowrap; font-family:inherit;
+      ">Get Anyway</button>
+    </div>
+  `;
+  document.body.appendChild(t);
+  setTimeout(() => { if (t.parentElement) t.remove(); }, 8000);
+}
+
+// ========== REQUESTS ==========
+function fmtEta(seconds) {
+  if (!seconds || seconds <= 0) return '';
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+// Cache last requests data and countdown ETAs client-side between polls
+let lastRequestsData = null;
+let lastRequestsFetch = 0;
+
+async function loadRequests() {
+  const container = document.getElementById('requestsList');
+  const now = Date.now();
+  
+  // Only fetch from server every 5 seconds, countdown locally between
+  if (now - lastRequestsFetch >= 5000 || !lastRequestsData) {
+    try {
+      const data = await api('/api/requests');
+      if (data.success) {
+        lastRequestsData = data;
+        lastRequestsFetch = now;
+      }
+    } catch (e) {
+      if (!lastRequestsData) {
+        container.innerHTML = '<div class="empty-state"><p>Could not load requests</p></div>';
+        return;
+      }
+    }
+  }
+
+  const data = lastRequestsData;
+  if (!data || !data.success || !data.requests.length) {
+    container.innerHTML = '<div class="empty-state"><p>No requests yet</p></div>';
+    return;
+  }
+
+  // Calculate how many seconds since last fetch for local ETA countdown
+  const elapsed = Math.floor((now - lastRequestsFetch) / 1000);
+
+  container.innerHTML = data.requests.map(r => {
+      const live = r.live;
+      // Locally count down ETA between server polls
+      const adjEta = (eta) => Math.max(0, (eta || 0) - elapsed);
+
+      // Status badge
+      let badge = '<span class="request-badge badge-sent">Sent</span>';
+      let progressBar = '';
+      let etaRow = '';
+
+      if (live) {
+        const eta = adjEta(live.etaToPlex);
+
+        if (live.completed) {
+          badge = '<span class="request-badge badge-done">✓ In Plex</span>';
+        } else if (live.pipelineStep === 'Failed') {
+          badge = '<span class="request-badge" style="background:rgba(248,81,73,0.15);color:var(--danger)">✗ Failed</span>';
+        } else if (live.pipelineStep === 'Downloading') {
+          badge = `<span class="request-badge badge-downloading">↓ ${live.progress}%</span>`;
+          progressBar = `<div class="request-progress-bar"><div class="request-progress-fill" style="width:${live.progress}%;background:var(--accent)"></div></div>`;
+          etaRow = `<div class="request-eta">
+            <span>Downloading${live.dlspeed > 0 ? ' · ' + fmtSpeed(live.dlspeed) : ''}</span>
+            <span>In Plex in <span class="eta-time">${fmtEta(eta) || '...'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Starting') {
+          badge = '<span class="request-badge badge-downloading">⚡ Starting</span>';
+          etaRow = `<div class="request-eta">
+            <span>Adding to queue</span>
+            <span>In Plex in <span class="eta-time">${fmtEta(eta) || '...'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Transferring') {
+          badge = '<span class="request-badge badge-transferring">⬇ Transferring</span>';
+          progressBar = `<div class="request-progress-bar"><div class="request-progress-fill" style="width:100%;background:var(--warning)"></div></div>`;
+          etaRow = `<div class="request-eta">
+            <span>SFTP → PC</span>
+            <span>In Plex in <span class="eta-time">${fmtEta(eta) || '...'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Waiting for transfer') {
+          badge = '<span class="request-badge badge-transferring">⏳ Queued</span>';
+          etaRow = `<div class="request-eta">
+            <span>Waiting for pipeline</span>
+            <span>In Plex in <span class="eta-time">~${fmtEta(eta) || '...'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Renaming') {
+          badge = '<span class="request-badge badge-processing">⚙ Renaming</span>';
+          etaRow = `<div class="request-eta">
+            <span>FileBot processing</span>
+            <span>In Plex in <span class="eta-time">${fmtEta(eta) || '<1m'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Moving to NAS') {
+          badge = '<span class="request-badge badge-processing">📁 Moving</span>';
+          etaRow = `<div class="request-eta">
+            <span>Copying to NAS</span>
+            <span>In Plex in <span class="eta-time">${fmtEta(eta) || '<30s'}</span></span>
+          </div>`;
+        } else if (live.pipelineStep === 'Processing') {
+          badge = '<span class="request-badge badge-processing">⚙ Processing</span>';
+          etaRow = `<div class="request-eta">
+            <span>Working</span>
+            <span>In Plex in <span class="eta-time">~${fmtEta(eta) || '...'}</span></span>
+          </div>`;
+        }
+      }
+
+      return `<div class="request-card">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="request-title">${escHtml(r.title)}</span>
+          ${r.year ? `<span style="color:var(--text-dim);font-size:12px">(${r.year})</span>` : ''}
+        </div>
+        <div class="request-meta">
+          ${badge}
+          <span class="request-badge badge-quality">${r.quality || '?'}</span>
+          <span>${fmtSize(r.size)}</span>
+          <span>${timeAgo(r.timestamp)}</span>
+        </div>
+        ${progressBar}
+        ${etaRow}
+      </div>`;
+    }).join('');
+}
+
+// ========== AUTO-REFRESH ==========
+let requestsInterval = null;
+function startRequestsRefresh() {
+  if (requestsInterval) return;
+  loadRequests();
+  requestsInterval = setInterval(() => loadRequests(), 1000);
+}
+function stopRequestsRefresh() {
+  if (requestsInterval) { clearInterval(requestsInterval); requestsInterval = null; }
+}
+async function loadSettings() {
+  try {
+    const data = await api('/api/config');
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (data.configured) {
+      dot.className = 'status-dot ok';
+      text.textContent = 'Connected to Media Manager';
+    } else {
+      dot.className = 'status-dot err';
+      text.textContent = 'Not configured — edit config.json';
+    }
+    if (data.preferences) {
+      document.getElementById('prefQuality').value = data.preferences.quality || '1080p';
+      document.getElementById('prefMaxSize').value = data.preferences.maxSizeGB || 4;
+      document.getElementById('prefMaxSizeTV').value = data.preferences.maxSizeGBTV || 60;
+      document.getElementById('prefMinSeed').value = data.preferences.minSeeders || 5;
+    }
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot err';
+    document.getElementById('statusText').textContent = 'Cannot reach server';
+  }
+}
+
+// Save preferences on change
+['prefQuality', 'prefMaxSize', 'prefMaxSizeTV', 'prefMinSeed'].forEach(id => {
+  document.getElementById(id).addEventListener('change', async () => {
+    const prefs = {
+      quality: document.getElementById('prefQuality').value,
+      maxSizeGB: parseInt(document.getElementById('prefMaxSize').value) || 4,
+      maxSizeGBTV: parseInt(document.getElementById('prefMaxSizeTV').value) || 60,
+      minSeeders: parseInt(document.getElementById('prefMinSeed').value) || 5,
+    };
+    await api('/api/config', {
+      method: 'POST',
+      body: JSON.stringify({ preferences: prefs }),
+    });
+    showToast('Preferences saved', 'success');
+  });
+});
+
+// (auto-refresh handled by startRequestsRefresh/stopRequestsRefresh)
+
+// ========== SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// ========== PIN CHECK ==========
+(async function init() {
+  try {
+    const data = await api('/api/config');
+    if (data.error && data.error === 'Invalid PIN') {
+      pin = prompt('Enter PIN:') || '';
+      localStorage.setItem('mc-pin', pin);
+      location.reload();
+    }
+  } catch (e) {
+    console.error('[init] PIN check failed:', e);
+  }
+})();
+</script>
+
+</body>
+</html>

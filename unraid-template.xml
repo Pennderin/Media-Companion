@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <n>media-companion</n>
+  <Repository>ghcr.io/pennderin/media-companion:latest</Repository>
+  <Registry>https://github.com/Pennderin/Media-Companion/pkgs/container/media-companion</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Pennderin/Media-Companion</Support>
+  <Project>https://github.com/Pennderin/Media-Companion</Project>
+  <Overview>Mobile-friendly PWA for searching and requesting media. Searches TMDB, finds torrents via Prowlarr, auto-selects the best match, and sends it to Media Manager for processing. Access from any phone or browser on your network.</Overview>
+  <Category>MediaServer:Other</Category>
+  <WebUI>http://[IP]:[PORT:3001]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Pennderin/Media-Companion/main/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Pennderin/Media-Companion/main/public/icon.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Media Manager container must be running</Requires>
+  <Config Name="Web UI Port" Target="3000" Default="3001" Mode="tcp" Description="Port for Companion PWA" Type="Port" Display="always" Required="true" Mask="false">3001</Config>
+  <Config Name="Config Directory" Target="/config" Default="/mnt/user/appdata/media-manager/config" Mode="rw" Description="Shared config directory (same as Media Manager)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/media-manager/config</Config>
+  <Config Name="Manager URL" Target="MANAGER_URL" Default="http://YOUR_NAS_IP:9876" Mode="" Description="URL of your Media Manager server (use your NAS IP)" Type="Variable" Display="always" Required="true" Mask="false">http://YOUR_NAS_IP:9876</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/New_York" Mode="" Description="Container timezone" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+</Container>

@@ -374,6 +374,36 @@ function scoreTorrent(torrent, prefs, type) {
   if (/\b(kor|jpn|chi|hin|fra|deu|ita|spa|rus|ara|tur|tha)\b/i.test(title)) score -= 30;
   if (/dubbed|multi/i.test(title) && !/english/i.test(title)) score -= 15;
 
+  // Strong foreign language filter — skip non-English releases entirely
+  const hasEnglishMarker = /\bENG(?:lish)?\b/i.test(title) || /\bEnG\b/.test(title) || /\bDUAL\b/i.test(title);
+  const foreignRelease =
+    /\bLektor\s*(PL|CZ|HU)\b/i.test(title) ||
+    /\bNapisy\s*PL\b/i.test(title) ||
+    /\bTRUEFRENCH\b/i.test(title) ||
+    /\bFRENCH\b/i.test(title) ||
+    /\bLATINO\b/i.test(title) ||
+    /\bGerman\s*DL\b/i.test(title) ||
+    /\biTALiAN\b/i.test(title) ||
+    /\bRUSSIAN\b/i.test(title) ||
+    /\bPOLISH\b/i.test(title) ||
+    /\bCZECH\b/i.test(title) ||
+    /\bHINDI\b/i.test(title) ||
+    /\bTAMiL\b/i.test(title) ||
+    /\bTELUGU\b/i.test(title) ||
+    /\bKOREAN\b/i.test(title) ||
+    /\bCHINESE\b/i.test(title) ||
+    /\bJAPANESE\b/i.test(title) ||
+    /\bARABIC\b/i.test(title) ||
+    /\bTURKISH\b/i.test(title) ||
+    /\bVFF\b/i.test(title) ||
+    /\bVFQ\b/i.test(title) ||
+    /\bHC\b/.test(title) ||
+    /\bITA(?:\s|$|\b)/i.test(title) ||
+    /\bRUS(?:\s|$|\b)/i.test(title) ||
+    /^(?:Slepa|La|Le|El|Der|Das|Die)\s\w+\s\//i.test(title);
+  if (foreignRelease && !hasEnglishMarker) score -= 500;
+  if (hasEnglishMarker && !foreignRelease) score += 5; // small boost for confirmed English
+
   // Minimum seeders gate
   if (torrent.seeders < (prefs.minSeeders || 5)) score -= 200;
 

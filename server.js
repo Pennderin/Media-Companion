@@ -512,8 +512,32 @@ async function plexSearch(title, type, year) {
 // or directly adds to qBittorrent.
 
 async function sendToMediaManager(torrent, title, type) {
-  const url = torrent.downloadUrl;
+  let url = torrent.downloadUrl;
   if (!url) throw new Error('No download URL for selected torrent');
+
+  // If the URL is a Prowlarr proxy link (not a direct magnet), resolve the magnet first
+  // Prowlarr proxy links expire quickly, causing 410 errors
+  if (url && !url.startsWith('magnet:')) {
+    try {
+      const managerUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+      console.log(`[get] Resolving magnet for: ${title}`);
+      const resolveRes = await fetch(`${managerUrl}/api/prowlarr/resolve-magnet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: torrent.title, guid: torrent.guid, infoUrl: torrent.infoUrl }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (resolveRes.ok) {
+        const data = await resolveRes.json();
+        if (data.success && data.downloadUrl && data.downloadUrl.startsWith('magnet:')) {
+          console.log(`[get] Resolved magnet: ${data.downloadUrl.substring(0, 60)}...`);
+          url = data.downloadUrl;
+        }
+      }
+    } catch (e) {
+      console.log(`[get] Magnet resolution failed, using original URL: ${e.message}`);
+    }
+  }
 
   // Try the Electron app's auto-grab endpoint (bypasses grab dialog, goes straight to pipeline)
   try {

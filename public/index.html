@@ -584,7 +584,12 @@ async function getMedia(idx, skipPlexCheck = false, tvMode = null, tvSeason = nu
   }
 
   const btn = document.querySelectorAll('.result-get-btn')[idx];
-  if (!btn || btn.classList.contains('loading')) return;
+  if (!btn || btn.classList.contains('loading') || btn.disabled) return;
+  
+  // Debounce — prevent double-clicks
+  btn.disabled = true;
+  setTimeout(() => { btn.disabled = false; }, 2000);
+
   btn.classList.add('loading');
   btn.innerHTML = '<div class="spinner"></div>';
 
@@ -604,6 +609,17 @@ async function getMedia(idx, skipPlexCheck = false, tvMode = null, tvSeason = nu
       btn.classList.add('plex-exists');
       btn.textContent = 'In Plex';
       showPlexToast(data.message || `Already in Plex: ${r.title}`, idx);
+      setTimeout(() => {
+        if (btn.classList.contains('plex-exists')) { btn.classList.remove('plex-exists'); btn.textContent = 'Get'; }
+      }, 8000);
+      return;
+    }
+
+    if (data.error === 'already_in_queue') {
+      btn.classList.remove('loading');
+      btn.classList.add('plex-exists');
+      btn.textContent = 'In Queue';
+      showToast(data.message || `Already in pipeline: ${r.title}`, 'info');
       setTimeout(() => {
         if (btn.classList.contains('plex-exists')) { btn.classList.remove('plex-exists'); btn.textContent = 'Get'; }
       }, 8000);

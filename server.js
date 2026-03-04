@@ -752,8 +752,67 @@ app.post('/api/get', requireAuth, async (req, res) => {
 
     const contentType = type || 'movie';
 
-    // Step 0: Check if already in Plex (skip for TV season/episode/latest — those have their own logic)
-    if (!skipPlexCheck && contentType === 'movie') {
+    // Step 0a: Check if already in the pipeline queue
+    if (!skipPlexCheck) {
+      try {
+        const managerUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+        const queueRes = await fetch(`${managerUrl}/api/pipeline/queue`, { signal: AbortSignal.timeout(3000) });
+        if (queueRes.ok) {
+          const queueData = await queueRes.json();
+          const jobs = (queueData.jobs || []).filter(j => j.status !== 'done' && j.status !== 'failed' && j.status !== 'cancelled');
+          
+          if (jobs.length) {
+            const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const reqTitle = normalize(title);
+            
+            // Build a label for what we're requesting to match against queue job names
+            let matchLabel;
+            if (contentType === 'tv' && tvMode === 'episode' && tvSeason && tvEpisode) {
+              // Episode-specific: match title + SxxExx
+              const sNum = String(tvSeason).padStart(2, '0');
+              const eNum = String(tvEpisode).padStart(2, '0');
+              matchLabel = `s${sNum}e${eNum}`;
+            } else if (contentType === 'tv' && tvMode === 'season' && tvSeason) {
+              // Season-specific: match title + Sxx (but not SxxExx — those are individual episodes)
+              const sNum = String(tvSeason).padStart(2, '0');
+              matchLabel = `s${sNum}`;
+            } else {
+              matchLabel = null; // Movie or full show — just match title
+            }
+            
+            for (const job of jobs) {
+              const jobName = normalize(job.name);
+              // Check if job name contains the requested title
+              if (!jobName.includes(reqTitle)) continue;
+              
+              if (contentType === 'movie') {
+                // Movie: title match is enough (with optional year check)
+                if (year && jobName.includes(String(year))) {
+                  return res.status(409).json({ error: 'already_in_queue', message: `Already in pipeline: ${job.name}` });
+                }
+                // No year in request — title match alone
+                if (!year) {
+                  return res.status(409).json({ error: 'already_in_queue', message: `Already in pipeline: ${job.name}` });
+                }
+              } else if (contentType === 'tv' && matchLabel) {
+                // TV with specific season/episode: must also match the SxxExx or Sxx pattern
+                if (jobName.includes(matchLabel)) {
+                  return res.status(409).json({ error: 'already_in_queue', message: `Already in pipeline: ${job.name}` });
+                }
+              } else if (contentType === 'tv' && tvMode === 'full') {
+                // Full show: any job with the title is a dup
+                return res.status(409).json({ error: 'already_in_queue', message: `Already in pipeline: ${job.name}` });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[get] Pipeline queue check failed (non-fatal):', e.message);
+      }
+    }
+
+    // Step 0b: Check if already in Plex (skip for TV season/episode/latest — those have their own logic)
+    if (!skipPlexCheck && (contentType === 'movie' || (contentType === 'tv' && tvMode === 'full'))) {
       const plexResult = await plexSearch(title, contentType, year);
       if (plexResult && plexResult.found) {
         return res.status(409).json({

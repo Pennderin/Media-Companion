@@ -1058,7 +1058,8 @@ app.get('/api/requests', requireAuth, async (req, res) => {
           icon: '/icon-192.png',
           badge: '/icon-192.png',
           tag: `complete-${r.id}`,
-        }).catch(() => {});
+        }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
+          .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
       }
     }
 
@@ -1291,6 +1292,7 @@ async function checkCompletionsAndNotify() {
   const requests = loadRequests();
   const pending = requests.filter(r => r.pushSubscription && !notifiedIds.has(r.id));
   if (!pending.length) return;
+  console.log(`[push-checker] Checking ${pending.length} pending requests...`);
 
   try {
     const enriched = await Promise.race([
@@ -1299,6 +1301,7 @@ async function checkCompletionsAndNotify() {
     ]);
 
     for (const r of enriched) {
+      console.log(`[push-checker] ${r.title}: completed=${r.live?.completed} step=${r.live?.pipelineStep}`);
       if (!r.live?.completed || notifiedIds.has(r.id)) continue;
       notifiedIds.add(r.id);
 
@@ -1312,10 +1315,11 @@ async function checkCompletionsAndNotify() {
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: `complete-${r.id}`,
-      });
+      }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
+        .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
     }
   } catch (e) {
-    // Silently ignore — enrichment timeout etc.
+    console.log(`[push-checker] Error: ${e.message}`);
   }
 }
 

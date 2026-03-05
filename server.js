@@ -12,15 +12,18 @@ function loadSmsConfig() {
 function saveSmsConfig(cfg) {
   fs.writeFileSync(SMS_CONFIG_FILE, JSON.stringify(cfg, null, 2));
 }
+const SMTP_USER = 'REMOVED_EMAIL';
+const SMTP_PASS = 'REVOKED_APP_PASSWORD';
+
 async function sendSms(message) {
   const cfg = loadSmsConfig();
-  if (!cfg.phone || !cfg.carrier || !cfg.smtpUser || !cfg.smtpPass) return;
+  if (!cfg.phone || !cfg.carrier) return;
   const transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
   await transporter.sendMail({
-    from: cfg.smtpUser,
+    from: SMTP_USER,
     to: `${cfg.phone}@${cfg.carrier}`,
     subject: '',
     text: message,
@@ -665,11 +668,13 @@ app.post('/api/push/subscribe', requireAuth, (req, res) => {
 
 // ========== SMS ENDPOINTS ==========
 app.get('/api/sms/config', requireAuth, (req, res) => {
-  res.json(loadSmsConfig());
+  const cfg = loadSmsConfig();
+  res.json({ phone: cfg.phone || '', carrier: cfg.carrier || '' });
 });
 
 app.post('/api/sms/config', requireAuth, (req, res) => {
-  saveSmsConfig(req.body);
+  const { phone, carrier } = req.body;
+  saveSmsConfig({ phone, carrier });
   res.json({ success: true });
 });
 

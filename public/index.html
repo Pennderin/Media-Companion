@@ -485,14 +485,6 @@
             <option value="msg.telus.com">Telus (alt)</option>
           </select>
         </div>
-        <div class="settings-row">
-          <span>Gmail Address</span>
-          <input type="email" id="smtpUser" placeholder="you@gmail.com" style="width:160px;text-align:left" oninput="saveSmsSettings()">
-        </div>
-        <div class="settings-row">
-          <span>App Password</span>
-          <input type="password" id="smtpPass" placeholder="16-char app password" style="width:160px;text-align:left" oninput="saveSmsSettings()">
-        </div>
         <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
           <button onclick="testSms()" style="
             padding:10px 18px; border-radius:var(--radius); border:1px solid var(--border);
@@ -1441,16 +1433,12 @@ function loadSmsSettings() {
   api('/api/sms/config').then(d => {
     if (d.phone) document.getElementById('smsPhone').value = d.phone;
     if (d.carrier) document.getElementById('smsCarrier').value = d.carrier;
-    if (d.smtpUser) document.getElementById('smtpUser').value = d.smtpUser;
-    if (d.smtpPass) document.getElementById('smtpPass').value = d.smtpPass;
   }).catch(() => {});
 }
 function saveSmsSettings() {
   const phone = document.getElementById('smsPhone').value.replace(/\D/g, '');
   const carrier = document.getElementById('smsCarrier').value;
-  const smtpUser = document.getElementById('smtpUser').value;
-  const smtpPass = document.getElementById('smtpPass').value;
-  api('/api/sms/config', { method: 'POST', body: JSON.stringify({ phone, carrier, smtpUser, smtpPass }) }).catch(() => {});
+  api('/api/sms/config', { method: 'POST', body: JSON.stringify({ phone, carrier }) }).catch(() => {});
 }
 async function testSms() {
   const status = document.getElementById('smsStatus');

@@ -25,7 +25,7 @@ async function sendSms(message) {
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
   await transporter.sendMail({
-    from: SMTP_USER,
+    from: `"Media Manager" <${SMTP_USER}>`,
     to: `${cfg.phone}@${cfg.carrier}`,
     subject: '',
     text: message,

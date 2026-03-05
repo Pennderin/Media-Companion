@@ -461,6 +461,7 @@
             background:var(--accent-glow); color:var(--accent); font-size:13px; font-weight:600;
             cursor:pointer; font-family:inherit; width:100%;
           ">Enable Notifications</button>
+          <div id="notifDebug" style="font-size:11px;color:var(--text-muted);font-family:monospace;word-break:break-all"></div>
         </div>
       </div>
 
@@ -1462,6 +1463,16 @@ async function requestPushPermission() {
 
 function updateNotifButton() {
   const btn = document.getElementById('notifBtn');
+  const dbg = document.getElementById('notifDebug');
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone;
+  const supported = 'PushManager' in window;
+  const swSupported = 'serviceWorker' in navigator;
+
+  if (dbg) {
+    dbg.textContent = `iOS:${isIOS} standalone:${isStandalone} PushManager:${supported} SW:${swSupported} permission:${supported ? Notification.permission : 'n/a'}`;
+  }
+
   if (!btn) return;
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone;

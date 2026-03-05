@@ -47,6 +47,8 @@ self.addEventListener('push', e => {
       tag: data.tag || 'media-companion',
       renotify: true,
       vibrate: [200, 100, 200],
+      timestamp: Date.now(),
+      requireInteraction: false,
     })
   );
 });

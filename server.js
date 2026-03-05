@@ -75,7 +75,15 @@ webpush.setVapidDetails('mailto:media-companion@local', vapidKeys.publicKey, vap
 
 async function sendPush(subscription, payload) {
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    const options = {
+      urgency: 'high',
+      headers: {
+        'apns-priority': '10',
+        'apns-push-type': 'alert',
+        'interruption-level': 'time-sensitive',
+      }
+    };
+    await webpush.sendNotification(subscription, JSON.stringify(payload), options);
   } catch (e) {
     if (e.statusCode === 410 || e.statusCode === 404) {
       // Subscription expired — remove it from any matching requests

@@ -981,7 +981,14 @@ app.get('/api/requests', requireAuth, async (req, res) => {
       enrichRequests(requests),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ]);
-    return res.json({ success: true, requests: enriched });
+
+    // Remove completed entries and persist so they don't come back
+    const active = enriched.filter(r => !r.live?.completed);
+    if (active.length < enriched.length) {
+      saveRequests(requests.filter((_, i) => !enriched[i]?.live?.completed));
+    }
+
+    return res.json({ success: true, requests: active });
   } catch (e) {
     console.error('[requests] Enrichment failed/timed out:', e.message);
     return res.json({ success: true, requests });

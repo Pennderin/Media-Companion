@@ -731,6 +731,11 @@ async function getMedia(idx, skipPlexCheck = false, tvMode = null, tvSeason = nu
 
   try {
     const body = { title: r.title, year: r.year, type: r.type, tmdbId: r.id, skipPlexCheck, pushSubscription };
+  // Re-subscribe if subscription was lost (e.g. after page reload or container restart)
+  if (!pushSubscription && Notification.permission === 'granted') {
+    try { await subscribePush(); } catch (e) {}
+    body.pushSubscription = pushSubscription;
+  }
     if (tvMode) body.tvMode = tvMode;
     if (tvSeason) body.tvSeason = parseInt(tvSeason);
     if (tvEpisode) body.tvEpisode = parseInt(tvEpisode);

@@ -1154,7 +1154,7 @@ async function loadSettings() {
 let topPeriod = 'day';
 let topType = 'movies';
 let topIndexerId = null;
-let topCache = {}; // keyed by `${period}-${type}`
+let topCache = {}; // keyed by `${period}-${type}`, values are {results, ts}
 let topResults = []; // current displayed results
 
 async function initTop() {
@@ -1173,7 +1173,8 @@ async function loadTop() {
     return;
   }
   const cacheKey = `${topPeriod}-${topType}`;
-  if (topCache[cacheKey]) { renderTop(topCache[cacheKey]); return; }
+  const cached = topCache[cacheKey];
+  if (cached && Date.now() - cached.ts < 10 * 60 * 1000) { renderTop(cached.results); return; }
 
   document.getElementById('topResults').innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
 
@@ -1188,7 +1189,7 @@ async function loadTop() {
     return;
   }
 
-  topCache[cacheKey] = data.results;
+  topCache[cacheKey] = { results: data.results, ts: Date.now() };
   renderTop(data.results);
 }
 

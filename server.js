@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
   paths: { staging: '', nasMovies: '', nasTVShows: '', nasKidsMovies: '', nasAsianMovies: '', nasAsianShows: '', nasAnimeMovies: '', nasAnimeShows: '' },
   prowlarr: { url: '', apiKey: '' },
   tmdb: { apiKey: '' },
-  plex: { url: '', token: '' },
+  plex: {},
   preferences: {
     quality: '1080p',      // preferred quality: 1080p, 4k, 720p, any
     maxSizeGB: 4,          // max torrent size in GB for movies
@@ -460,51 +460,22 @@ function selectBestTorrent(results, type, prefs, tvMode, tvSeason) {
 }
 
 // ========== PLEX DUPLICATE CHECK ==========
-// Checks if a title already exists in the Plex library
+// Proxies to the media-manager server which holds Plex credentials and logic
 
 async function plexSearch(title, type, year) {
-  const plexUrl = config.plex?.url;
-  const plexToken = config.plex?.token;
-  if (!plexUrl || !plexToken) return null; // Plex not configured — skip check
-
   try {
-    const base = plexUrl.replace(/\/$/, '');
-    const url = `${base}/hubs/search?query=${encodeURIComponent(title)}&X-Plex-Token=${plexToken}&limit=10`;
-    const res = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
+    const managerUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+    const params = new URLSearchParams({ title, type: type || 'movie', ...(year ? { year } : {}) });
+    const res = await fetch(`${managerUrl}/api/plex/check?${params}`, {
+      headers: { 'x-api-key': process.env.MANAGER_API_KEY || '' },
+      signal: AbortSignal.timeout(6000),
     });
     if (!res.ok) return null;
     const data = await res.json();
-
-    // Search through hubs for matching type
-    const hubs = data.MediaContainer?.Hub || [];
-    const targetTypes = type === 'tv' ? ['show'] : ['movie'];
-    const normalize = s => s.replace(/[^a-z0-9]/g, '');
-    const searchNorm = normalize(title.toLowerCase().trim());
-    const searchYear = year ? parseInt(year) : null;
-
-    for (const hub of hubs) {
-      if (!targetTypes.includes(hub.type)) continue;
-      const items = hub.Metadata || [];
-      for (const item of items) {
-        const plexNorm = normalize((item.title || '').toLowerCase().trim());
-        if (plexNorm !== searchNorm) continue;
-
-        // Title matches — check year if provided
-        if (searchYear && item.year && item.year !== searchYear) continue;
-
-        return {
-          found: true,
-          title: item.title,
-          year: item.year,
-          type: hub.type,
-          summary: (item.summary || '').slice(0, 150),
-        };
-      }
-    }
-    return { found: false };
+    if (!data.configured) return null; // Plex not set up on media-manager
+    return data; // { found, title, year, type }
   } catch (e) {
-    console.error('[plex] Search error:', e.message);
+    console.error('[plex] Check error:', e.message);
     return null;
   }
 }

@@ -238,40 +238,50 @@ async function prowlarrSearch(query, searchType = 'search') {
   const allIndexers = await idxRes.json();
   const torrentIndexers = allIndexers.filter(i => i.enable && i.protocol === 'torrent');
   if (!torrentIndexers.length) throw new Error('No enabled torrent indexers');
-  console.log(`[prowlarr] Searching ${torrentIndexers.length} indexers for "${query}" (type: ${searchType})`);
 
-  // Search all indexers in parallel
-  const searches = torrentIndexers.map(async (idx) => {
-    try {
-      const url = `${base}/api/v1/search?query=${encodeURIComponent(query)}&indexerIds=${idx.id}&type=${searchType}`;
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        console.log(`[prowlarr] ${idx.name}: HTTP ${res.status}`);
+  // Search 1337x first — links don't expire. Only fall back to others if 1337x has no results.
+  const leet = torrentIndexers.find(i => i.name.toLowerCase().includes('1337x'));
+  const others = torrentIndexers.filter(i => !i.name.toLowerCase().includes('1337x'));
+  const primaryIndexers = leet ? [leet] : torrentIndexers;
+
+  const searchIndexers = async (indexers) => {
+    const searches = indexers.map(async (idx) => {
+      try {
+        const url = `${base}/api/v1/search?query=${encodeURIComponent(query)}&indexerIds=${idx.id}&type=${searchType}`;
+        const res = await fetch(url, { headers });
+        if (!res.ok) { console.log(`[prowlarr] ${idx.name}: HTTP ${res.status}`); return []; }
+        const data = await res.json();
+        console.log(`[prowlarr] ${idx.name}: ${data.length} results`);
+        return data;
+      } catch (e) {
+        console.log(`[prowlarr] ${idx.name}: error — ${e.message}`);
         return [];
       }
-      const data = await res.json();
-      console.log(`[prowlarr] ${idx.name}: ${data.length} results`);
-      return data;
-    } catch (e) {
-      console.log(`[prowlarr] ${idx.name}: error — ${e.message}`);
-      return [];
-    }
-  });
+    });
+    const outcomes = await Promise.all(searches);
+    return outcomes.flat();
+  };
 
-  const outcomes = await Promise.all(searches);
+  console.log(`[prowlarr] Searching 1337x for "${query}" (type: ${searchType})`);
+  let rawResults = await searchIndexers(primaryIndexers);
+
+  // Fall back to other indexers (ext.to etc.) only if 1337x returned nothing
+  if (!rawResults.length && others.length) {
+    console.log(`[prowlarr] 1337x empty, falling back to: ${others.map(i => i.name).join(', ')}`);
+    rawResults = await searchIndexers(others);
+  }
   const allResults = [];
-  for (const results of outcomes) {
-    for (const r of results) {
+  for (const r of rawResults) {
       let dlUrl = r.downloadUrl || r.magnetUrl || null;
       if (!dlUrl && r.guid && r.guid.startsWith('magnet:')) dlUrl = r.guid;
       allResults.push({
         title: r.title, size: r.size,
         seeders: r.seeders || 0, leechers: r.leechers || 0,
         indexer: r.indexer, downloadUrl: dlUrl,
+        infoUrl: r.infoUrl || null,
         publishDate: r.publishDate,
         categories: (r.categories || []).map(c => c.id),
       });
-    }
   }
   allResults.sort((a, b) => b.seeders - a.seeders);
   console.log(`[prowlarr] Total: ${allResults.length} results`);
@@ -1033,6 +1043,24 @@ app.get('/api/requests', requireAuth, async (req, res) => {
       enrichRequests(requests),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ]);
+
+    // Send push notifications for newly completed items, then remove them
+    const completed = enriched.filter(r => r.live?.completed);
+    for (const r of completed) {
+      if (r.pushSubscription && !notifiedIds.has(r.id)) {
+        notifiedIds.add(r.id);
+        const label = r.tvMode === 'season' ? ` S${String(r.tvSeason || '').padStart(2, '0')}`
+          : r.tvMode === 'episode' ? ` S${String(r.tvSeason || '').padStart(2, '0')}E${String(r.tvEpisode || '').padStart(2, '0')}`
+          : '';
+        sendPush(r.pushSubscription, {
+          title: '✅ Ready in Plex',
+          body: `${r.title}${label} is available`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: `complete-${r.id}`,
+        }).catch(() => {});
+      }
+    }
 
     // Remove completed entries and persist so they don't come back
     const active = enriched.filter(r => !r.live?.completed);

@@ -1065,10 +1065,14 @@ app.post('/api/get', requireAuth, async (req, res) => {
       smsCarrier: smsCarrier || null,
     };
     // Remove any existing entry for the same item to avoid duplicates on re-grab
-    const deduped = requests.filter(r =>
-      !(r.title === requestLabel && r.tvMode === (tvMode || null) &&
-        r.tvSeason === (tvSeason || null) && r.tvEpisode === (tvEpisode || null))
-    );
+    const deduped = requests.filter(r => {
+      // Remove same title/episode (re-grab)
+      const sameItem = r.title === requestLabel && r.tvMode === (tvMode || null) &&
+        r.tvSeason === (tvSeason || null) && r.tvEpisode === (tvEpisode || null);
+      // Also remove same phone + same title (rotated push key cleanup)
+      const samePhoneAndItem = smsPhone && r.smsPhone === smsPhone && r.title === requestLabel;
+      return !sameItem && !samePhoneAndItem;
+    });
     deduped.unshift(newRequest);
     if (deduped.length > 100) deduped.length = 100;
     saveRequests(deduped);

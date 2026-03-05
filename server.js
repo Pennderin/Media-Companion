@@ -975,6 +975,18 @@ app.post('/api/get', requireAuth, async (req, res) => {
     // Step 3: Send to pipeline
     const result = await sendToMediaManager(best, best.title, contentType);
 
+    // Get current highest pipeline job ID so we can ignore older completed jobs
+    let minPipelineJobId = 0;
+    try {
+      const mmUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+      const statusRes = await fetch(`${mmUrl}/status`, { signal: AbortSignal.timeout(2000) });
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        const jobs = statusData.jobs || [];
+        if (jobs.length) minPipelineJobId = Math.max(...jobs.map(j => j.id || 0));
+      }
+    } catch {}
+
     // Step 4: Log the request
     const requests = loadRequests();
     const pushSubscription = req.body.pushSubscription || null;
@@ -992,6 +1004,7 @@ app.post('/api/get', requireAuth, async (req, res) => {
       method: result.method,
       status: 'sent',
       timestamp: new Date().toISOString(),
+      minPipelineJobId,
       pushSubscription,
     });
     if (requests.length > 100) requests.length = 100;
@@ -1129,8 +1142,12 @@ async function enrichRequests(requests) {
         const jName = (j.name || '').toLowerCase();
         const rTitle = (r.title || '').toLowerCase();
         const rTorrent = (r.torrent || '').toLowerCase();
-        return (jName && rTitle && jName.includes(rTitle.slice(0, 20))) ||
+        const nameMatch = (jName && rTitle && jName.includes(rTitle.slice(0, 20))) ||
                (jName && rTorrent && (jName.includes(rTorrent.slice(0, 30)) || rTorrent.includes(jName.slice(0, 30))));
+        if (!nameMatch) return false;
+        // Ignore pipeline jobs that existed before this request was made (stale completed jobs)
+        if (r.minPipelineJobId && j.id <= r.minPipelineJobId) return false;
+        return true;
       });
 
       if (!match && !pipelineJob) {

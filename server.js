@@ -404,6 +404,9 @@ function scoreTorrent(torrent, prefs, type) {
   // Penalize individual episodes for TV requests
   if (type === 'tv' && /S\d{1,2}E\d{1,2}/i.test(title) && !/complete|season/i.test(title)) score -= 20;
 
+  // Prefer 1337x — its Prowlarr links don't expire (unlike ext.to which returns 410)
+  if ((torrent.indexer || '').toLowerCase().includes('1337x')) score += 15;
+
   // Known good release groups bonus
   if (/FLUX|NTb|SPARKS|RARBG|YTS|YIFY|EVO|AMIABLE/i.test(title)) score += 10;
 

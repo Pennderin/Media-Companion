@@ -1146,7 +1146,7 @@ async function enrichRequests(requests) {
                (jName && rTorrent && (jName.includes(rTorrent.slice(0, 30)) || rTorrent.includes(jName.slice(0, 30))));
         if (!nameMatch) return false;
         // Ignore pipeline jobs that existed before this request was made (stale completed jobs)
-        if (r.minPipelineJobId && j.id <= r.minPipelineJobId) return false;
+        if (r.minPipelineJobId && j.id < r.minPipelineJobId) return false;
         return true;
       });
 

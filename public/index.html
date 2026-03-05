@@ -466,6 +466,44 @@
       </div>
 
       <div class="settings-section">
+        <div class="settings-label">SMS Notifications</div>
+        <div class="settings-row">
+          <span>Phone Number</span>
+          <input type="tel" id="smsPhone" placeholder="5551234567" style="width:130px;text-align:left" oninput="saveSmsSettings()">
+        </div>
+        <div class="settings-row">
+          <span>Carrier</span>
+          <select id="smsCarrier" onchange="saveSmsSettings()" style="min-width:140px">
+            <option value="">-- Select --</option>
+            <option value="txt.att.net">AT&T</option>
+            <option value="tmomail.net">T-Mobile</option>
+            <option value="vtext.com">Verizon</option>
+            <option value="messaging.sprintpcs.com">Sprint</option>
+            <option value="pcs.rogers.com">Rogers</option>
+            <option value="txt.bell.ca">Bell</option>
+            <option value="text.telus.com">Telus</option>
+            <option value="msg.telus.com">Telus (alt)</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span>Gmail Address</span>
+          <input type="email" id="smtpUser" placeholder="you@gmail.com" style="width:160px;text-align:left" oninput="saveSmsSettings()">
+        </div>
+        <div class="settings-row">
+          <span>App Password</span>
+          <input type="password" id="smtpPass" placeholder="16-char app password" style="width:160px;text-align:left" oninput="saveSmsSettings()">
+        </div>
+        <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+          <button onclick="testSms()" style="
+            padding:10px 18px; border-radius:var(--radius); border:1px solid var(--border);
+            background:var(--accent-glow); color:var(--accent); font-size:13px; font-weight:600;
+            cursor:pointer; font-family:inherit; width:100%;
+          ">Send Test SMS</button>
+          <div id="smsStatus" style="font-size:12px;color:var(--text-dim);text-align:center"></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-label">Connection Status</div>
         <div class="settings-row" id="statusRow">
           <span><span class="status-dot unknown" id="statusDot"></span> <span id="statusText">Checking...</span></span>
@@ -600,7 +638,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.add('active');
     if (page === 'requests') startRequestsRefresh();
     else stopRequestsRefresh();
-    if (page === 'settings') { loadSettings(); updateNotifButton(); }
+    if (page === 'settings') { loadSettings(); updateNotifButton(); loadSmsSettings(); }
     if (page === 'top') loadTop();
   });
 });
@@ -1398,6 +1436,35 @@ document.querySelectorAll('[data-top-type]').forEach(btn => {
 });
 
 // ========== SERVICE WORKER ==========
+// ========== SMS NOTIFICATIONS ==========
+function loadSmsSettings() {
+  api('/api/sms/config').then(d => {
+    if (d.phone) document.getElementById('smsPhone').value = d.phone;
+    if (d.carrier) document.getElementById('smsCarrier').value = d.carrier;
+    if (d.smtpUser) document.getElementById('smtpUser').value = d.smtpUser;
+    if (d.smtpPass) document.getElementById('smtpPass').value = d.smtpPass;
+  }).catch(() => {});
+}
+function saveSmsSettings() {
+  const phone = document.getElementById('smsPhone').value.replace(/\D/g, '');
+  const carrier = document.getElementById('smsCarrier').value;
+  const smtpUser = document.getElementById('smtpUser').value;
+  const smtpPass = document.getElementById('smtpPass').value;
+  api('/api/sms/config', { method: 'POST', body: JSON.stringify({ phone, carrier, smtpUser, smtpPass }) }).catch(() => {});
+}
+async function testSms() {
+  const status = document.getElementById('smsStatus');
+  status.textContent = 'Sending...';
+  try {
+    const d = await api('/api/sms/test', { method: 'POST' });
+    status.textContent = d.success ? '✓ SMS sent!' : '✗ ' + (d.error || 'Failed');
+    status.style.color = d.success ? 'var(--accent)' : '#ff6b6b';
+  } catch (e) {
+    status.textContent = '✗ ' + e.message;
+    status.style.color = '#ff6b6b';
+  }
+}
+
 // ========== PUSH NOTIFICATIONS ==========
 let pushSubscription = null;
 let pushVapidKey = null;

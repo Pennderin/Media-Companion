@@ -2,6 +2,31 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const webpush = require('web-push');
+const nodemailer = require('nodemailer');
+
+// ========== SMS CONFIG ==========
+const SMS_CONFIG_FILE = path.join(configDir, 'sms-config.json');
+function loadSmsConfig() {
+  try { return JSON.parse(fs.readFileSync(SMS_CONFIG_FILE, 'utf8')); } catch { return {}; }
+}
+function saveSmsConfig(cfg) {
+  fs.writeFileSync(SMS_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+}
+async function sendSms(message) {
+  const cfg = loadSmsConfig();
+  if (!cfg.phone || !cfg.carrier || !cfg.smtpUser || !cfg.smtpPass) return;
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+  });
+  await transporter.sendMail({
+    from: cfg.smtpUser,
+    to: `${cfg.phone}@${cfg.carrier}`,
+    subject: '',
+    text: message,
+  });
+  console.log(`[sms] Sent to ${cfg.phone}@${cfg.carrier}`);
+}
 
 // Allow self-signed/untrusted HTTPS certs (common on seedbox webUIs)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -638,6 +663,25 @@ app.post('/api/push/subscribe', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ========== SMS ENDPOINTS ==========
+app.get('/api/sms/config', requireAuth, (req, res) => {
+  res.json(loadSmsConfig());
+});
+
+app.post('/api/sms/config', requireAuth, (req, res) => {
+  saveSmsConfig(req.body);
+  res.json({ success: true });
+});
+
+app.post('/api/sms/test', requireAuth, async (req, res) => {
+  try {
+    await sendSms('📺 Test from Media Companion — notifications are working!');
+    res.json({ success: true });
+  } catch (e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
 
 app.get('/api/config', requireAuth, (req, res) => {
   // Return config without sensitive values
@@ -1074,19 +1118,23 @@ app.get('/api/requests', requireAuth, async (req, res) => {
     // Send push notifications for newly completed items, then remove them
     const completed = enriched.filter(r => r.live?.completed);
     for (const r of completed) {
-      if (r.pushSubscription && !notifiedIds.has(r.id)) {
+      if (!notifiedIds.has(r.id)) {
         notifiedIds.add(r.id);
         const label = r.tvMode === 'season' ? ` S${String(r.tvSeason || '').padStart(2, '0')}`
           : r.tvMode === 'episode' ? ` S${String(r.tvSeason || '').padStart(2, '0')}E${String(r.tvEpisode || '').padStart(2, '0')}`
           : '';
-        sendPush(r.pushSubscription, {
-          title: '✅ Ready in Plex',
-          body: `${r.title}${label} is available`,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: `complete-${r.id}`,
-        }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
-          .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
+        const message = `✅ ${r.title}${label} is ready in Plex`;
+        if (r.pushSubscription) {
+          sendPush(r.pushSubscription, {
+            title: '✅ Ready in Plex',
+            body: `${r.title}${label} is available`,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: `complete-${r.id}`,
+          }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
+            .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
+        }
+        sendSms(message).catch(e => console.log(`[sms] Failed: ${e.message}`));
       }
     }
 
@@ -1339,15 +1387,19 @@ async function checkCompletionsAndNotify() {
       const label = r.tvMode === 'season' ? ` S${String(r.tvSeason || '').padStart(2, '0')}`
         : r.tvMode === 'episode' ? ` S${String(r.tvSeason || '').padStart(2, '0')}E${String(r.tvEpisode || '').padStart(2, '0')}`
         : '';
+      const message = `✅ ${r.title}${label} is ready in Plex`;
 
-      await sendPush(r.pushSubscription, {
-        title: '✅ Ready in Plex',
-        body: `${r.title}${label} is available`,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: `complete-${r.id}`,
-      }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
-        .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
+      if (r.pushSubscription) {
+        await sendPush(r.pushSubscription, {
+          title: '✅ Ready in Plex',
+          body: `${r.title}${label} is available`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: `complete-${r.id}`,
+        }).then(() => console.log(`[push] Sent notification for: ${r.title}`))
+          .catch(e => console.log(`[push] Failed for ${r.title}: ${e.message} (status: ${e.statusCode})`));
+      }
+      await sendSms(message).catch(e => console.log(`[sms] Failed: ${e.message}`));
     }
   } catch (e) {
     console.log(`[push-checker] Error: ${e.message}`);

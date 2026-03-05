@@ -1220,10 +1220,14 @@ async function showTopInfo(idx) {
   const r = topResults[idx];
   if (!r) return;
 
-  // Parse title/year for TMDB lookup
-  const match = r.title.match(/^(.+?)[\s.]+(\d{4})/);
-  const title = match ? match[1].replace(/\./g, ' ').trim() : r.title;
-  const year = match ? match[2] : '';
+  // Parse title/year from torrent name — stop at quality tags
+  const cleaned = r.title.replace(/\./g, ' ').replace(/_/g, ' ');
+  const stopWords = /\b(1080p|2160p|720p|480p|4k|BluRay|WEB[-\s]?DL|WEBRip|HDTV|HEVC|x265|x264|AVC|HDR|DTS|AAC|AC3|REMUX|EXTENDED|REPACK|PROPER|IMAX|THEATRICAL|DIRECTORS|UNRATED|REMASTERED|COMPLETE|S\d{2}E\d{2}|S\d{2})\b/i;
+  const stopMatch = cleaned.search(stopWords);
+  const beforeTags = stopMatch > 0 ? cleaned.slice(0, stopMatch).trim() : cleaned;
+  const match = beforeTags.match(/^(.+?)\s+(\d{4})\s*$/);
+  const title = match ? match[1].trim() : beforeTags.replace(/\s*\d{4}\s*$/, '').trim() || r.title;
+  const year = match ? match[2] : (cleaned.match(/\b(20\d{2})\b/) || [])[1] || '';
   const type = topType === 'tv' ? 'tv' : 'movie';
 
   // Show sheet immediately with title, fetch TMDB in background
@@ -1256,9 +1260,27 @@ async function showTopInfo(idx) {
     const typeParam = type === 'tv' ? '&type=tv' : '';
     const data = await api(`/api/search?q=${encodeURIComponent(title)}${typeParam}`);
     if (data.success && data.results && data.results.length) {
-      const tmdb = data.results.find(x =>
-        x.title.toLowerCase().includes(title.toLowerCase().substring(0, 8))
-      ) || data.results[0];
+      const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const titleNorm = norm(title);
+      const parsedYear = year ? parseInt(year) : null;
+
+      // Score each result: title similarity + year match
+      const scored = data.results.map(x => {
+        const xNorm = norm(x.title || '');
+        const xYear = x.year ? parseInt(x.year) : null;
+        // Title score: exact = 2, starts with = 1, else 0
+        let score = xNorm === titleNorm ? 2 : (xNorm.startsWith(titleNorm) || titleNorm.startsWith(xNorm) ? 1 : 0);
+        // Year score: exact = 2, ±1 = 1, missing = 0, wrong = -1
+        if (parsedYear && xYear) {
+          if (xYear === parsedYear) score += 2;
+          else if (Math.abs(xYear - parsedYear) === 1) score += 1;
+          else score -= 1;
+        }
+        return { x, score };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      const tmdb = scored[0].x;
 
       const posterWrap = overlay.querySelector('#info-poster-wrap');
       if (tmdb.poster) {
@@ -1266,6 +1288,9 @@ async function showTopInfo(idx) {
       } else {
         posterWrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:28px;height:28px;color:var(--text-muted)"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`;
       }
+      // Update title/year in sheet with confirmed TMDB data
+      overlay.querySelector('.info-sheet-title').textContent = tmdb.title || title;
+      overlay.querySelector('.info-sheet-sub').textContent = `${tmdb.year || year}${(tmdb.year || year) ? ' · ' : ''}${type === 'tv' ? 'TV Show' : 'Movie'}`;
       if (tmdb.rating && tmdb.rating !== '0.0') {
         overlay.querySelector('#info-rating').textContent = `★ ${tmdb.rating}`;
       }
@@ -1288,9 +1313,13 @@ async function grabTop(idx) {
   btn.textContent = '...';
 
   // Parse title/year
-  const match = r.title.match(/^(.+?)[\s.]+(\d{4})/);
-  const title = match ? match[1].replace(/\./g, ' ').trim() : r.title;
-  const year = match ? match[2] : '';
+  const cleaned = r.title.replace(/\./g, ' ').replace(/_/g, ' ');
+  const stopWords = /\b(1080p|2160p|720p|480p|4k|BluRay|WEB[-\s]?DL|WEBRip|HDTV|HEVC|x265|x264|AVC|HDR|DTS|AAC|AC3|REMUX|EXTENDED|REPACK|PROPER|IMAX|S\d{2}E\d{2}|S\d{2})\b/i;
+  const stopMatch = cleaned.search(stopWords);
+  const beforeTags = stopMatch > 0 ? cleaned.slice(0, stopMatch).trim() : cleaned;
+  const match = beforeTags.match(/^(.+?)\s+(\d{4})\s*$/);
+  const title = match ? match[1].trim() : beforeTags.replace(/\s*\d{4}\s*$/, '').trim() || r.title;
+  const year = match ? match[2] : (cleaned.match(/\b(20\d{2})\b/) || [])[1] || '';
   const type = topType === 'tv' ? 'tv' : 'movie';
 
   try {

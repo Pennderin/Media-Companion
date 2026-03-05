@@ -1,4 +1,4 @@
-const CACHE = 'media-companion-v8';
+const CACHE = 'media-companion-v9';
 const ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -34,3 +34,30 @@ self.addEventListener('fetch', e => {
     caches.match(e.request).then(r => r || fetch(e.request))
   );
 });
+
+// ========== PUSH NOTIFICATIONS ==========
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  const data = e.data.json();
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      tag: data.tag || 'media-companion',
+      renotify: true,
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+      if (cs.length) return cs[0].focus();
+      return clients.openWindow('/');
+    })
+  );
+});
+

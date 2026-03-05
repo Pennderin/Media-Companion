@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const webpush = require('web-push');
 
 // Allow self-signed/untrusted HTTPS certs (common on seedbox webUIs)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -55,7 +56,43 @@ function saveConfig(cfg) {
 
 let config = loadConfig();
 
-// ========== AUTH MIDDLEWARE ==========
+// ========== PUSH NOTIFICATIONS (VAPID) ==========
+const VAPID_PATH = process.env.CONFIG_DIR
+  ? path.join(process.env.CONFIG_DIR, 'vapid.json')
+  : path.join(__dirname, 'vapid.json');
+
+function getVapidKeys() {
+  if (fs.existsSync(VAPID_PATH)) {
+    try { return JSON.parse(fs.readFileSync(VAPID_PATH, 'utf8')); } catch {}
+  }
+  const keys = webpush.generateVAPIDKeys();
+  fs.writeFileSync(VAPID_PATH, JSON.stringify(keys, null, 2));
+  return keys;
+}
+
+const vapidKeys = getVapidKeys();
+webpush.setVapidDetails('mailto:media-companion@local', vapidKeys.publicKey, vapidKeys.privateKey);
+
+async function sendPush(subscription, payload) {
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+  } catch (e) {
+    if (e.statusCode === 410 || e.statusCode === 404) {
+      // Subscription expired — remove it from any matching requests
+      const reqs = loadRequests();
+      const cleaned = reqs.map(r => {
+        if (JSON.stringify(r.pushSubscription) === JSON.stringify(subscription)) {
+          const { pushSubscription, ...rest } = r;
+          return rest;
+        }
+        return r;
+      });
+      saveRequests(cleaned);
+    }
+  }
+}
+
+
 function requireAuth(req, res, next) {
   if (!config.server.pin) return next(); // no pin = no auth
   const pin = req.headers['x-pin'] || req.query.pin;
@@ -570,7 +607,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'Media Companion' });
 });
 
-// Settings
+// ========== PUSH SUBSCRIPTION ==========
+app.get('/api/push/vapid-public-key', (req, res) => {
+  res.json({ publicKey: vapidKeys.publicKey });
+});
+
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  // Subscription stored per-request, not globally — just acknowledge
+  res.json({ success: true });
+});
+
+
 app.get('/api/config', requireAuth, (req, res) => {
   // Return config without sensitive values
   res.json({
@@ -909,6 +956,7 @@ app.post('/api/get', requireAuth, async (req, res) => {
 
     // Step 4: Log the request
     const requests = loadRequests();
+    const pushSubscription = req.body.pushSubscription || null;
     requests.unshift({
       id: Date.now(),
       title: requestLabel, year, type: contentType,
@@ -923,6 +971,7 @@ app.post('/api/get', requireAuth, async (req, res) => {
       method: result.method,
       status: 'sent',
       timestamp: new Date().toISOString(),
+      pushSubscription,
     });
     if (requests.length > 100) requests.length = 100;
     saveRequests(requests);
@@ -1202,6 +1251,44 @@ function getLocalIP() {
   }
   return 'localhost';
 }
+
+// ========== BACKGROUND PUSH CHECKER ==========
+// Runs every 30s, fires push to the requester when their download completes
+const notifiedIds = new Set(); // prevent duplicate notifications this session
+
+async function checkCompletionsAndNotify() {
+  const requests = loadRequests();
+  const pending = requests.filter(r => r.pushSubscription && !notifiedIds.has(r.id));
+  if (!pending.length) return;
+
+  try {
+    const enriched = await Promise.race([
+      enrichRequests(pending),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    ]);
+
+    for (const r of enriched) {
+      if (!r.live?.completed || notifiedIds.has(r.id)) continue;
+      notifiedIds.add(r.id);
+
+      const label = r.tvMode === 'season' ? ` S${String(r.tvSeason || '').padStart(2, '0')}`
+        : r.tvMode === 'episode' ? ` S${String(r.tvSeason || '').padStart(2, '0')}E${String(r.tvEpisode || '').padStart(2, '0')}`
+        : '';
+
+      await sendPush(r.pushSubscription, {
+        title: '✅ Ready in Plex',
+        body: `${r.title}${label} is available`,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: `complete-${r.id}`,
+      });
+    }
+  } catch (e) {
+    // Silently ignore — enrichment timeout etc.
+  }
+}
+
+setInterval(checkCompletionsAndNotify, 30000);
 
 function startServer(port) {
   const p = port || parseInt(process.env.PORT) || config.server.port || 3000;

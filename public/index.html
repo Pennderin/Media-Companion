@@ -717,7 +717,7 @@ async function getMedia(idx, skipPlexCheck = false, tvMode = null, tvSeason = nu
   btn.innerHTML = '<div class="spinner"></div>';
 
   try {
-    const body = { title: r.title, year: r.year, type: r.type, tmdbId: r.id, skipPlexCheck };
+    const body = { title: r.title, year: r.year, type: r.type, tmdbId: r.id, skipPlexCheck, pushSubscription };
     if (tvMode) body.tvMode = tvMode;
     if (tvSeason) body.tvSeason = parseInt(tvSeason);
     if (tvEpisode) body.tvEpisode = parseInt(tvEpisode);
@@ -1332,6 +1332,7 @@ async function grabTop(idx) {
       body: JSON.stringify({
         title, year, type, skipPlexCheck: false,
         magnetUrl: r.downloadUrl, torrentTitle: r.title,
+        pushSubscription,
       }),
     });
 
@@ -1379,6 +1380,37 @@ document.querySelectorAll('[data-top-type]').forEach(btn => {
 });
 
 // ========== SERVICE WORKER ==========
+// ========== PUSH NOTIFICATIONS ==========
+let pushSubscription = null;
+
+async function initPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const keyData = await api('/api/push/vapid-public-key');
+    if (!keyData.publicKey) return;
+
+    // Convert base64 public key to Uint8Array
+    const raw = atob(keyData.publicKey.replace(/-/g, '+').replace(/_/g, '/'));
+    const key = new Uint8Array(raw.split('').map(c => c.charCodeAt(0)));
+
+    // Check existing subscription first
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      // Only ask for permission if not already granted/denied
+      if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') return;
+      }
+      if (Notification.permission !== 'granted') return;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    }
+    pushSubscription = sub.toJSON();
+  } catch (e) {
+    console.warn('[push] Could not subscribe:', e);
+  }
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
@@ -1396,6 +1428,7 @@ if ('serviceWorker' in navigator) {
     console.error('[init] PIN check failed:', e);
   }
   initTop();
+  initPush();
 })();
 </script>
 

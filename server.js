@@ -948,6 +948,30 @@ app.post('/api/get', requireAuth, async (req, res) => {
 // Track when each request entered its current pipeline step
 const stepStartTimes = {}; // { requestId: { step: 'transferring', startedAt: timestamp, totalEstimate: seconds } }
 
+// ========== TOP 20 (proxy to media-manager) ==========
+app.get('/api/top/indexers', requireAuth, async (req, res) => {
+  try {
+    const managerUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+    const r = await fetch(`${managerUrl}/api/prowlarr/indexers`, { signal: AbortSignal.timeout(5000) });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
+app.post('/api/top/browse', requireAuth, async (req, res) => {
+  try {
+    const managerUrl = process.env.MANAGER_URL || 'http://127.0.0.1:9876';
+    const r = await fetch(`${managerUrl}/api/prowlarr/browse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) { res.json({ success: false, error: e.message }); }
+});
+
 app.get('/api/requests', requireAuth, async (req, res) => {
   const requests = loadRequests();
   if (!requests.length) return res.json({ success: true, requests: [] });

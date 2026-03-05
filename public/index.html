@@ -277,6 +277,104 @@
     .nav-btn svg { width: 22px; height: 22px; }
     .nav-btn span { font-size: 10px; font-weight: 500; }
     .nav-btn:active { opacity: 0.6; }
+
+    /* ===== TOP PAGE ===== */
+    .top-header {
+      position: sticky; top: 0; z-index: 10;
+      padding: 14px 20px 10px; background: var(--bg);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .period-toggle {
+      display: flex; background: var(--bg-card); border-radius: 10px;
+      padding: 3px; gap: 2px;
+    }
+    .period-btn {
+      flex: 1; padding: 7px; border: none; border-radius: 8px;
+      background: none; color: var(--text-muted); font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .period-btn.active { background: var(--accent); color: #fff; }
+    .period-btn:active { opacity: 0.7; }
+    .top-card {
+      display: flex; gap: 12px; padding: 14px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); position: relative;
+    }
+    .top-card-rank {
+      font-size: 22px; font-weight: 800; color: var(--text-muted);
+      width: 28px; flex-shrink: 0; display: flex; align-items: flex-start;
+      padding-top: 2px; line-height: 1;
+    }
+    .top-card-rank.top3 { color: var(--accent); }
+    .top-card-body { flex: 1; min-width: 0; }
+    .top-card-title { font-size: 14px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
+    .top-card-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .top-card-seeds { font-size: 12px; color: var(--success); font-weight: 600; }
+    .top-card-size { font-size: 12px; color: var(--text-dim); }
+    .top-card-age { font-size: 11px; color: var(--text-muted); }
+    .top-card-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+    .top-info-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-hover); color: var(--text-dim); font-size: 13px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .top-info-btn:active { background: var(--border); }
+    .top-get-btn {
+      padding: 7px 16px; border-radius: 20px; border: none;
+      background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+    .top-get-btn:active { background: var(--accent-hover); }
+    .top-get-btn.loading { background: var(--text-muted); pointer-events: none; }
+    .top-get-btn.success { background: var(--success); }
+    .top-get-btn.error { background: var(--danger); }
+    .top-get-btn.plex-exists { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); font-size: 11px; }
+
+    /* TMDB info sheet */
+    .info-sheet-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000;
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: fadeIn 0.15s ease;
+    }
+    .info-sheet {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0; width: 100%; max-width: 480px;
+      max-height: 80vh; overflow-y: auto;
+      animation: slideUp 0.2s ease; padding-bottom: calc(20px + var(--safe-bottom));
+    }
+    .info-sheet-poster-row {
+      display: flex; gap: 14px; padding: 20px 20px 14px;
+    }
+    .info-sheet-poster {
+      width: 80px; height: 120px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+      background: var(--bg-hover);
+    }
+    .info-sheet-poster-placeholder {
+      width: 80px; height: 120px; border-radius: 8px; background: var(--bg-hover);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .info-sheet-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+    .info-sheet-title { font-size: 16px; font-weight: 700; line-height: 1.3; }
+    .info-sheet-sub { font-size: 12px; color: var(--text-dim); }
+    .info-sheet-rating { font-size: 13px; color: var(--warning); font-weight: 600; }
+    .info-sheet-overview {
+      font-size: 13px; color: var(--text-dim); line-height: 1.5;
+      padding: 0 20px 16px;
+    }
+    .info-sheet-grab-row {
+      padding: 0 20px 4px; display: flex; gap: 10px;
+    }
+    .info-sheet-grab-btn {
+      flex: 1; padding: 14px; border-radius: var(--radius); border: none;
+      background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .info-sheet-grab-btn:active { background: var(--accent-hover); }
+    .info-sheet-cancel {
+      width: 100%; padding: 12px; margin-top: 4px; border: none;
+      background: none; color: var(--text-muted); font-size: 13px;
+      cursor: pointer; font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -318,8 +416,26 @@
   </div>
 </div>
 
-<div id="page-requests" class="page">
+<div id="page-top" class="page">
+  <div class="top-header">
+    <div class="period-toggle">
+      <button class="period-btn active" data-period="day">Day</button>
+      <button class="period-btn" data-period="week">Week</button>
+      <button class="period-btn" data-period="month">Month</button>
+    </div>
+    <div class="type-toggle" style="margin-top:0">
+      <button class="type-btn active" data-top-type="movies">🎬 Movies</button>
+      <button class="type-btn" data-top-type="tv">📺 TV</button>
+    </div>
+  </div>
   <div class="page-scroll">
+    <div id="topResults" class="results">
+      <div class="empty-state"><p>Select a period to load top content</p></div>
+    </div>
+  </div>
+</div>
+
+<div id="page-requests" class="page">
     <div style="padding-top:8px">
       <h2 style="font-size:18px;font-weight:700;margin-bottom:16px">Recent Requests</h2>
       <div id="requestsList" class="results">
@@ -387,6 +503,10 @@
   <button class="nav-btn active" data-page="search">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
     <span>Search</span>
+  </button>
+  <button class="nav-btn" data-page="top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    <span>Top</span>
   </button>
   <button class="nav-btn" data-page="requests">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
@@ -466,6 +586,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (page === 'requests') startRequestsRefresh();
     else stopRequestsRefresh();
     if (page === 'settings') loadSettings();
+    if (page === 'top') loadTop();
   });
 });
 
@@ -1027,6 +1148,202 @@ async function loadSettings() {
 
 // (auto-refresh handled by startRequestsRefresh/stopRequestsRefresh)
 
+// ========== TOP 20 ==========
+let topPeriod = 'day';
+let topType = 'movies';
+let topIndexerId = null;
+let topCache = {}; // keyed by `${period}-${type}`
+let topResults = []; // current displayed results
+
+async function initTop() {
+  // Load indexers once
+  try {
+    const data = await api('/api/top/indexers');
+    if (data.success && data.indexers && data.indexers.length) {
+      topIndexerId = data.indexers[0].id;
+    }
+  } catch (e) { console.error('[top] indexers:', e); }
+}
+
+async function loadTop() {
+  if (!topIndexerId) {
+    document.getElementById('topResults').innerHTML = '<div class="empty-state"><p>Prowlarr not configured</p></div>';
+    return;
+  }
+  const cacheKey = `${topPeriod}-${topType}`;
+  if (topCache[cacheKey]) { renderTop(topCache[cacheKey]); return; }
+
+  document.getElementById('topResults').innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+
+  const category = topType === 'tv' ? 5000 : 2000;
+  const data = await api('/api/top/browse', {
+    method: 'POST',
+    body: JSON.stringify({ indexerId: topIndexerId, category, period: topPeriod }),
+  });
+
+  if (!data.success || !data.results) {
+    document.getElementById('topResults').innerHTML = `<div class="empty-state"><p style="color:var(--danger)">${escHtml(data.error || 'Failed to load')}</p></div>`;
+    return;
+  }
+
+  topCache[cacheKey] = data.results;
+  renderTop(data.results);
+}
+
+function renderTop(results) {
+  topResults = results;
+  if (!results.length) {
+    document.getElementById('topResults').innerHTML = '<div class="empty-state"><p>No results</p></div>';
+    return;
+  }
+  document.getElementById('topResults').innerHTML = '<div class="results">' + results.slice(0, 20).map((r, i) => `
+    <div class="top-card" data-idx="${i}">
+      <div class="top-card-rank ${i < 3 ? 'top3' : ''}">${i + 1}</div>
+      <div class="top-card-body">
+        <div class="top-card-title">${escHtml(r.title)}</div>
+        <div class="top-card-meta">
+          <span class="top-card-seeds">▲ ${r.seeders || 0}</span>
+          <span class="top-card-size">${fmtSize(r.size)}</span>
+          <span class="top-card-age">${r.timeStr || ''}</span>
+        </div>
+      </div>
+      <div class="top-card-actions">
+        <button class="top-info-btn" onclick="event.stopPropagation(); showTopInfo(${i})">ℹ</button>
+        <button class="top-get-btn" id="top-get-${i}" onclick="event.stopPropagation(); grabTop(${i})">Get</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+}
+
+async function showTopInfo(idx) {
+  const r = topResults[idx];
+  if (!r) return;
+
+  // Parse title/year for TMDB lookup
+  const match = r.title.match(/^(.+?)[\s.]+(\d{4})/);
+  const title = match ? match[1].replace(/\./g, ' ').trim() : r.title;
+  const year = match ? match[2] : '';
+  const type = topType === 'tv' ? 'tv' : 'movie';
+
+  // Show sheet immediately with title, fetch TMDB in background
+  const overlay = document.createElement('div');
+  overlay.className = 'info-sheet-overlay';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="info-sheet">
+      <div class="info-sheet-poster-row">
+        <div class="info-sheet-poster-placeholder" id="info-poster-wrap">
+          <div class="spinner"></div>
+        </div>
+        <div class="info-sheet-meta">
+          <div class="info-sheet-title">${escHtml(title)}</div>
+          <div class="info-sheet-sub">${year}${year ? ' · ' : ''}${type === 'tv' ? 'TV Show' : 'Movie'}</div>
+          <div class="info-sheet-rating" id="info-rating"></div>
+        </div>
+      </div>
+      <div class="info-sheet-overview" id="info-overview"><div class="spinner" style="display:inline-block"></div></div>
+      <div class="info-sheet-grab-row">
+        <button class="info-sheet-grab-btn" onclick="this.closest('.info-sheet-overlay').remove(); grabTop(${idx})">Get</button>
+      </div>
+      <button class="info-sheet-cancel" onclick="this.closest('.info-sheet-overlay').remove()">Cancel</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Fetch TMDB info
+  try {
+    const typeParam = type === 'tv' ? '&type=tv' : '';
+    const data = await api(`/api/search?q=${encodeURIComponent(title)}${typeParam}`);
+    if (data.success && data.results && data.results.length) {
+      const tmdb = data.results.find(x =>
+        x.title.toLowerCase().includes(title.toLowerCase().substring(0, 8))
+      ) || data.results[0];
+
+      const posterWrap = overlay.querySelector('#info-poster-wrap');
+      if (tmdb.poster) {
+        posterWrap.outerHTML = `<img class="info-sheet-poster" src="${tmdb.poster}" alt="">`;
+      } else {
+        posterWrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:28px;height:28px;color:var(--text-muted)"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`;
+      }
+      if (tmdb.rating && tmdb.rating !== '0.0') {
+        overlay.querySelector('#info-rating').textContent = `★ ${tmdb.rating}`;
+      }
+      overlay.querySelector('#info-overview').textContent = tmdb.overview || 'No description available.';
+    } else {
+      overlay.querySelector('#info-overview').textContent = 'No TMDB info found.';
+    }
+  } catch (e) {
+    overlay.querySelector('#info-overview').textContent = 'Could not load details.';
+  }
+}
+
+async function grabTop(idx) {
+  const r = topResults[idx];
+  if (!r) return;
+  const btn = document.getElementById(`top-get-${idx}`);
+  if (!btn || btn.classList.contains('loading')) return;
+
+  btn.classList.add('loading');
+  btn.textContent = '...';
+
+  // Parse title/year
+  const match = r.title.match(/^(.+?)[\s.]+(\d{4})/);
+  const title = match ? match[1].replace(/\./g, ' ').trim() : r.title;
+  const year = match ? match[2] : '';
+  const type = topType === 'tv' ? 'tv' : 'movie';
+
+  try {
+    const data = await api('/api/get', {
+      method: 'POST',
+      body: JSON.stringify({
+        title, year, type, skipPlexCheck: false,
+        magnetUrl: r.downloadUrl, torrentTitle: r.title,
+      }),
+    });
+
+    btn.classList.remove('loading');
+    if (data.error === 'already_in_plex') {
+      btn.classList.add('plex-exists');
+      btn.textContent = 'In Plex';
+      showToast(`Already in Plex: ${title}`, 'error');
+      setTimeout(() => { btn.classList.remove('plex-exists'); btn.textContent = 'Get'; }, 6000);
+    } else if (data.success) {
+      btn.classList.add('success');
+      btn.textContent = '✓';
+      showToast(`${title} — queued!`, 'success');
+      setTimeout(() => { btn.classList.remove('success'); btn.textContent = 'Get'; }, 3000);
+    } else {
+      throw new Error(data.error || 'Failed');
+    }
+  } catch (e) {
+    btn.classList.remove('loading');
+    btn.classList.add('error');
+    btn.textContent = '✗';
+    showToast(e.message || 'Failed', 'error');
+    setTimeout(() => { btn.classList.remove('error'); btn.textContent = 'Get'; }, 3000);
+  }
+}
+
+// Period toggle
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    topPeriod = btn.dataset.period;
+    loadTop();
+  });
+});
+
+// Type toggle for top page
+document.querySelectorAll('[data-top-type]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-top-type]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    topType = btn.dataset.topType;
+    loadTop();
+  });
+});
+
 // ========== SERVICE WORKER ==========
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -1044,6 +1361,7 @@ if ('serviceWorker' in navigator) {
   } catch (e) {
     console.error('[init] PIN check failed:', e);
   }
+  initTop();
 })();
 </script>
 

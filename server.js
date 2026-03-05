@@ -5,7 +5,9 @@ const webpush = require('web-push');
 const nodemailer = require('nodemailer');
 
 // ========== SMS CONFIG ==========
-const SMS_CONFIG_FILE = path.join(configDir, 'sms-config.json');
+const SMS_CONFIG_FILE = process.env.CONFIG_DIR
+  ? path.join(process.env.CONFIG_DIR, 'sms-config.json')
+  : path.join(__dirname, 'sms-config.json');
 function loadSmsConfig() {
   try { return JSON.parse(fs.readFileSync(SMS_CONFIG_FILE, 'utf8')); } catch { return {}; }
 }

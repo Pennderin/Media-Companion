@@ -415,6 +415,11 @@
       <button class="type-btn" data-type="movie">Movies</button>
       <button class="type-btn" data-type="tv">TV Shows</button>
     </div>
+    <div class="indexer-pills" id="searchIndexerPills" style="margin-top:6px">
+      <div class="indexer-pill" data-idx="1337x" onclick="setIndexer('1337x')">1337x</div>
+      <div class="indexer-pill" data-idx="extto" onclick="setIndexer('extto')">ext.to</div>
+      <div class="indexer-pill" data-idx="nyaa" onclick="setIndexer('nyaa')">Nyaa</div>
+    </div>
   </div>
   <div class="page-scroll">
     <div id="searchResults">
@@ -1621,6 +1626,23 @@ if ('serviceWorker' in navigator) {
   initTop();
   initPush();
 })();
+
+  // ========== Indexer Selection ==========
+  function getIndexer() { return localStorage.getItem('preferred_indexer') || 'extto'; }
+  function setIndexer(id) {
+    localStorage.setItem('preferred_indexer', id);
+    document.querySelectorAll('.indexer-pill').forEach(function(p) {
+      p.classList.toggle('active', p.dataset.idx === id);
+    });
+  }
+  function initIndexerPills() {
+    var cur = getIndexer();
+    document.querySelectorAll('.indexer-pill').forEach(function(p) {
+      p.classList.toggle('active', p.dataset.idx === cur);
+    });
+  }
+  // Init on load
+  initIndexerPills();
 </script>
 
 </body>
